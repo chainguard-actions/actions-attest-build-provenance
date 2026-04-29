@@ -2,5 +2,6 @@
   "owner": "actions",
   "name": "attest-build-provenance",
   "visibility": "public",
-  "description": "Action for generating build provenance attestations for workflow artifacts"
+  "description": "Action for generating build provenance attestations for workflow artifacts",
+  "block_publish": false
 }
