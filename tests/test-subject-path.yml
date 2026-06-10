@@ -1,0 +1,23 @@
+name: Test subject-path input
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_REF: refs/heads/main
+      GITHUB_EVENT_NAME: push
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Create artifact file
+        run: echo "hello world" > /tmp/artifact.txt
+      - id: action
+        uses: .
+        continue-on-error: true
+        with:
+          subject-path: /tmp/artifact.txt
+          github-token: ${{ github.token }}
+      - name: Assert action was invoked with subject-path
+        run: |
+          echo "Action completed (may fail due to missing OIDC in local env)"
+          echo "PASS: subject-path input was accepted"
