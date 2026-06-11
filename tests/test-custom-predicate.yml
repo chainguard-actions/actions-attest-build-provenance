@@ -17,9 +17,15 @@ jobs:
         with:
           subject-path: /tmp/artifact.txt
           predicate-type: https://example.com/predicate/v1
-          predicate: '{"buildType":"https://example.com/build/v1","builder":{"id":"https://example.com/builder"}}'
+          predicate: '{"builder":{"id":"https://example.com/builder"}}'
           github-token: ${{ github.token }}
-      - name: Assert action was invoked with predicate-type and predicate
+      - name: Assert action ran (attestation may fail without real GitHub API)
+        env:
+          OUTCOME: ${{ steps.action.outcome }}
         run: |
-          echo "Action completed (may fail due to missing OIDC in local env)"
-          echo "PASS: predicate-type and predicate inputs were accepted"
+          echo "outcome: $OUTCOME"
+          if [ "$OUTCOME" = "skipped" ]; then
+            echo "FAIL: action was skipped unexpectedly"
+            exit 1
+          fi
+          echo "PASS: action executed (outcome=$OUTCOME)"

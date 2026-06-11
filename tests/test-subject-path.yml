@@ -17,7 +17,13 @@ jobs:
         with:
           subject-path: /tmp/artifact.txt
           github-token: ${{ github.token }}
-      - name: Assert action was invoked with subject-path
+      - name: Assert action ran (attestation may fail without real GitHub API)
+        env:
+          OUTCOME: ${{ steps.action.outcome }}
         run: |
-          echo "Action completed (may fail due to missing OIDC in local env)"
-          echo "PASS: subject-path input was accepted"
+          echo "outcome: $OUTCOME"
+          if [ "$OUTCOME" = "skipped" ]; then
+            echo "FAIL: action was skipped unexpectedly"
+            exit 1
+          fi
+          echo "PASS: action executed (outcome=$OUTCOME)"

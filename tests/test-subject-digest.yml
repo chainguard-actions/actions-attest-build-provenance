@@ -13,10 +13,16 @@ jobs:
         uses: .
         continue-on-error: true
         with:
-          subject-digest: sha256:a948904f2f0f479b8f936065f3e9f2e5b3e7e8f3c3e5e7e9f1f3f5f7f9f1f3f5
+          subject-digest: sha256:a948904f2f0f479b8f936065b3bef2b5e5c5e5e5e5e5e5e5e5e5e5e5e5e5e5e
           subject-name: my-artifact
           github-token: ${{ github.token }}
-      - name: Assert action was invoked with subject-digest and subject-name
+      - name: Assert action ran (attestation may fail without real GitHub API)
+        env:
+          OUTCOME: ${{ steps.action.outcome }}
         run: |
-          echo "Action completed (may fail due to missing OIDC in local env)"
-          echo "PASS: subject-digest and subject-name inputs were accepted"
+          echo "outcome: $OUTCOME"
+          if [ "$OUTCOME" = "skipped" ]; then
+            echo "FAIL: action was skipped unexpectedly"
+            exit 1
+          fi
+          echo "PASS: action executed (outcome=$OUTCOME)"
