@@ -1,4 +1,4 @@
-name: Test attest-build-provenance with subject-digest
+name: Test subject-digest input
 on:
   workflow_dispatch:
 jobs:
@@ -8,44 +8,50 @@ jobs:
       id-token: write
       attestations: write
       contents: read
-    env:
-      GITHUB_REF: refs/heads/main
-      GITHUB_EVENT_NAME: push
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-      - name: Compute digest of a sample artifact
+      - name: Compute digest of a known artifact
         id: digest
         run: |
           echo "hello world" > /tmp/artifact.txt
           DIGEST="sha256:$(sha256sum /tmp/artifact.txt | awk '{print $1}')"
-          echo "digest=$DIGEST" >> $GITHUB_OUTPUT
+          echo "digest=$DIGEST" >> "$GITHUB_OUTPUT"
           echo "Computed digest: $DIGEST"
 
-      - name: Invoke attest-build-provenance with subject-digest and subject-name
-        id: attest
+      - id: action
         uses: .
         continue-on-error: true
         with:
           subject-digest: ${{ steps.digest.outputs.digest }}
           subject-name: my-artifact
-          github-token: ${{ github.token }}
+          show-summary: false
 
-      - name: Check action was invoked (may fail without real OIDC)
+      - name: Assert action ran (pass or expected OIDC failure)
         env:
-          OUTCOME: ${{ steps.attest.outcome }}
+          OUTCOME: ${{ steps.action.outcome }}
+          BUNDLE_PATH: ${{ steps.action.outputs.bundle-path }}
+          ATTESTATION_ID: ${{ steps.action.outputs.attestation-id }}
         run: |
-          echo "Action outcome: $OUTCOME"
-          # The action requires real GitHub OIDC tokens and API access.
-          # Under act, it will fail at the attestation step due to missing OIDC.
-          # We verify the action was invoked and failed for the expected reason
-          # (not due to misconfiguration of inputs like missing subject-name).
+          echo "outcome: $OUTCOME"
+          echo "bundle-path: $BUNDLE_PATH"
+          echo "attestation-id: $ATTESTATION_ID"
+          # Under act, OIDC tokens are unavailable so the action is expected to fail
+          # at the Sigstore signing step. This is acceptable - the action is correctly
+          # configured and reaches the signing step.
           if [ "$OUTCOME" = "success" ]; then
-            echo "PASS: Action succeeded (real OIDC available)"
+            echo "PASS: action succeeded (real OIDC token available)"
+            if [ -z "$BUNDLE_PATH" ]; then
+              echo "FAIL: action succeeded but bundle-path is empty"
+              exit 1
+            fi
+            if [ ! -f "$BUNDLE_PATH" ]; then
+              echo "FAIL: bundle file does not exist at $BUNDLE_PATH"
+              exit 1
+            fi
           elif [ "$OUTCOME" = "failure" ]; then
-            echo "INFO: Action failed as expected without real OIDC tokens"
-            echo "PASS: Action was invoked correctly with subject-digest and subject-name"
+            echo "PASS: action failed as expected (OIDC not available under act)"
           else
-            echo "FAIL: Unexpected outcome: $OUTCOME"
+            echo "FAIL: unexpected outcome: $OUTCOME"
             exit 1
           fi

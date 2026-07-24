@@ -1,22 +1,18 @@
-name: Test attest-build-provenance with predicate-path
+name: Test predicate-path input
 on:
   workflow_dispatch:
 jobs:
   test:
     runs-on: ubuntu-latest
-    permissions:
-      id-token: write
-      attestations: write
-      contents: read
-    env:
-      GITHUB_REF: refs/heads/main
-      GITHUB_EVENT_NAME: push
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-      - name: Create a sample artifact and predicate file
+      - name: Create subject artifact
         run: |
-          echo "hello world" > /tmp/artifact.txt
+          echo "hello world" > /tmp/subject-artifact.txt
+
+      - name: Create predicate file
+        run: |
           cat > /tmp/predicate.json <<'EOF'
           {
             "buildType": "https://example.com/build/v1",
@@ -25,42 +21,33 @@ jobs:
             }
           }
           EOF
-          echo "Predicate file created:"
-          cat /tmp/predicate.json
 
-      - name: Compute digest of the artifact
-        id: digest
-        run: |
-          DIGEST="sha256:$(sha256sum /tmp/artifact.txt | awk '{print $1}')"
-          echo "digest=$DIGEST" >> $GITHUB_OUTPUT
-          echo "Computed digest: $DIGEST"
-
-      - name: Invoke attest-build-provenance with predicate-path and predicate-type
-        id: attest
+      - id: action
         uses: .
-        continue-on-error: true
         with:
-          subject-digest: ${{ steps.digest.outputs.digest }}
-          subject-name: my-artifact
-          predicate-type: https://example.com/predicate/v1
+          subject-path: /tmp/subject-artifact.txt
+          predicate-type: "https://example.com/build/v1"
           predicate-path: /tmp/predicate.json
-          github-token: ${{ github.token }}
+          show-summary: false
 
-      - name: Check action was invoked (may fail without real OIDC)
+      - name: Assert bundle-path output is set
         env:
-          OUTCOME: ${{ steps.attest.outcome }}
+          ACTUAL: ${{ steps.action.outputs.bundle-path }}
         run: |
-          echo "Action outcome: $OUTCOME"
-          # The action requires real GitHub OIDC tokens and API access.
-          # Under act, it will fail at the attestation step due to missing OIDC.
-          # We verify the action was invoked and failed for the expected reason
-          # (not due to misconfiguration of inputs like missing predicate-path).
-          if [ "$OUTCOME" = "success" ]; then
-            echo "PASS: Action succeeded (real OIDC available)"
-          elif [ "$OUTCOME" = "failure" ]; then
-            echo "INFO: Action failed as expected without real OIDC tokens"
-            echo "PASS: Action was invoked correctly with predicate-path and predicate-type inputs"
-          else
-            echo "FAIL: Unexpected outcome: $OUTCOME"
+          echo "actual bundle-path: $ACTUAL"
+          if [ -z "$ACTUAL" ]; then
+            echo "FAIL: expected bundle-path to be set"
             exit 1
           fi
+          echo "PASS"
+
+      - name: Assert bundle file exists
+        env:
+          BUNDLE_PATH: ${{ steps.action.outputs.bundle-path }}
+        run: |
+          echo "bundle-path: $BUNDLE_PATH"
+          if [ ! -f "$BUNDLE_PATH" ]; then
+            echo "FAIL: bundle file does not exist at $BUNDLE_PATH"
+            exit 1
+          fi
+          echo "PASS"
