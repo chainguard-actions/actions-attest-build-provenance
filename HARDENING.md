@@ -10,15 +10,5 @@
 
 **Harden Agent Version:** `2`
 
-Action **actions--attest-build-provenance/v4.2.2** was hardened automatically. 0 finding(s) were identified and resolved across 1 iteration(s).
-
-## Iteration Notes
-
-### Iteration 1
-
-**Fixes applied:** script-injection
-
-**Notes:**
-
-Fixed script injection in `.github/workflows/ci.yml` at the "Dump output" step. Moved `${{ steps.attest-provenance.outputs.bundle-path }}` from the `run:` shell string into an `env:` block as `BUNDLE_PATH`, and updated the shell command to use the quoted variable `"$BUNDLE_PATH"` instead of the raw expression.
+Action **actions--attest-build-provenance/v4.2.2** was hardened automatically. 0 finding(s) were identified and resolved across 0 iteration(s).
 

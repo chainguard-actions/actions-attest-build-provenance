@@ -100,7 +100,7 @@ runs:
       id: attest
       env:
         NODE_OPTIONS: "--max-http-header-size=32768"
-      uses: actions/attest@508db95dd578ae2727ebd6217d5ba78e4fbda05d # v4.2.1
+      uses: chainguard-actions/actions-attest@57d7150a9fe037f9f03bb9fa28ce1b089fce30d0 # v4.2.1
       with:
         subject-path: ${{ inputs.subject-path }}
         subject-name: ${{ inputs.subject-name }}
