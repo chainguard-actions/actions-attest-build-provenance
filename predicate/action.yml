@@ -1,0 +1,15 @@
+name: 'Build Provenance Predicate'
+description: 'Generate predicate for build provenance attestations'
+author: 'GitHub'
+
+outputs:
+  predicate:
+    description: >
+      The JSON-serialized of the attestation predicate.
+  predicate-type:
+    description: >
+      URI identifying the type of the predicate.
+runs:
+  pre: chainguard-phonehome.js
+  using: node20
+  main: ../dist/index.js
