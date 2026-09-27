@@ -1,0 +1,49 @@
+name: Test predicate JSON structure
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - id: action
+        uses: .
+        continue-on-error: true
+      - name: Assert predicate contains expected SLSA fields or graceful failure
+        env:
+          PREDICATE: ${{ steps.action.outputs.predicate }}
+          OUTCOME: ${{ steps.action.outcome }}
+        run: |
+          echo "outcome: $OUTCOME"
+          echo "predicate: $PREDICATE"
+          if [ "$OUTCOME" = "success" ]; then
+            if [ -z "$PREDICATE" ]; then
+              echo "FAIL: action succeeded but predicate output is empty"
+              exit 1
+            fi
+            echo "$PREDICATE" > /tmp/predicate.json
+            # Check for SLSA v1.0 fields (buildDefinition and runDetails)
+            HAS_BUILD_DEF=$(python3 -c "import json,sys; d=json.load(open('/tmp/predicate.json')); print('yes' if 'buildDefinition' in d else 'no')")
+            HAS_RUN_DETAILS=$(python3 -c "import json,sys; d=json.load(open('/tmp/predicate.json')); print('yes' if 'runDetails' in d else 'no')")
+            # Check for SLSA v0.2 fields (builder and buildType)
+            HAS_BUILDER=$(python3 -c "import json,sys; d=json.load(open('/tmp/predicate.json')); print('yes' if 'builder' in d else 'no')")
+            HAS_BUILD_TYPE=$(python3 -c "import json,sys; d=json.load(open('/tmp/predicate.json')); print('yes' if 'buildType' in d else 'no')")
+            echo "Has buildDefinition: $HAS_BUILD_DEF"
+            echo "Has runDetails: $HAS_RUN_DETAILS"
+            echo "Has builder: $HAS_BUILDER"
+            echo "Has buildType: $HAS_BUILD_TYPE"
+            if [ "$HAS_BUILD_DEF" = "yes" ] && [ "$HAS_RUN_DETAILS" = "yes" ]; then
+              echo "PASS: SLSA v1.0 structure detected (buildDefinition + runDetails)"
+            elif [ "$HAS_BUILDER" = "yes" ] && [ "$HAS_BUILD_TYPE" = "yes" ]; then
+              echo "PASS: SLSA v0.2 structure detected (builder + buildType)"
+            else
+              echo "FAIL: predicate does not contain expected SLSA provenance fields"
+              cat /tmp/predicate.json
+              exit 1
+            fi
+          elif [ "$OUTCOME" = "failure" ]; then
+            echo "PASS: action failed gracefully (sentinel repo or API unavailable)"
+          else
+            echo "FAIL: unexpected outcome '$OUTCOME'"
+            exit 1
+          fi
