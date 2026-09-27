@@ -8,6 +8,7 @@ Hardened by [Chainguard](https://www.chainguard.dev) from the upstream action at
 
 | Version | Tag | Upstream commit |
 |---------|-----|-----------------|
+| predicate@0.1.0 | [`predicate@0.1.0`](https://github.com/chainguard-actions/actions-attest-build-provenance/tree/predicate@0.1.0) | [`56a361a`](https://github.com/actions/attest-build-provenance/commit/56a361a16034268025aa760d300531128e298f1c) |
 | predicate@0.2.0 | [`predicate@0.2.0`](https://github.com/chainguard-actions/actions-attest-build-provenance/tree/predicate@0.2.0) | [`810042e`](https://github.com/actions/attest-build-provenance/commit/810042e79b70f848608c7f311a148cb76f4373b0) |
 | predicate@1.0.0 | [`predicate@1.0.0`](https://github.com/chainguard-actions/actions-attest-build-provenance/tree/predicate@1.0.0) | [`db1dde0`](https://github.com/actions/attest-build-provenance/commit/db1dde0f270afe12073070ac7aa802958ae3ec04) |
 | predicate@1.1.0 | [`predicate@1.1.0`](https://github.com/chainguard-actions/actions-attest-build-provenance/tree/predicate@1.1.0) | [`46e4ff8`](https://github.com/actions/attest-build-provenance/commit/46e4ff8b824dc6ae13c8f92c8ba69907e2d39b4e) |
