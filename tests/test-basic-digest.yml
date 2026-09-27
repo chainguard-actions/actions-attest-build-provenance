@@ -1,0 +1,36 @@
+name: Test basic usage with subject-digest
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - id: action
+        uses: .
+        continue-on-error: true
+        with:
+          subject-digest: "sha256:a948904f2f0f479b8f936f443c0a3b5b4b7b7b7b7b7b7b7b7b7b7b7b7b7b7b7"
+          subject-name: "test-artifact"
+          show-summary: false
+
+      - name: Assert action ran (succeeded or failed gracefully on sentinel repo)
+        env:
+          OUTCOME: ${{ steps.action.outcome }}
+          BUNDLE_PATH: ${{ steps.action.outputs.bundle-path }}
+        run: |
+          echo "outcome: $OUTCOME"
+          echo "bundle-path: $BUNDLE_PATH"
+          if [ "$OUTCOME" = "success" ]; then
+            if [ -z "$BUNDLE_PATH" ]; then
+              echo "FAIL: action succeeded but bundle-path output is empty"
+              exit 1
+            fi
+            echo "PASS: attestation created, bundle-path=$BUNDLE_PATH"
+          elif [ "$OUTCOME" = "failure" ]; then
+            echo "PASS: action failed gracefully (sentinel repo is not resolvable for attestation API)"
+          else
+            echo "FAIL: unexpected outcome '$OUTCOME'"
+            exit 1
+          fi

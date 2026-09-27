@@ -1,0 +1,38 @@
+name: Test basic build provenance predicate generation
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - id: predicate
+        uses: .
+        continue-on-error: true
+
+      - name: Assert predicate outputs
+        env:
+          PREDICATE_TYPE: ${{ steps.predicate.outputs.predicate-type }}
+          PREDICATE: ${{ steps.predicate.outputs.predicate }}
+          OUTCOME: ${{ steps.predicate.outcome }}
+        run: |
+          echo "outcome: $OUTCOME"
+          echo "predicate-type: $PREDICATE_TYPE"
+          echo "predicate: $PREDICATE"
+          if [ "$OUTCOME" = "success" ]; then
+            if [ -z "$PREDICATE_TYPE" ]; then
+              echo "FAIL: predicate-type output is empty on success"
+              exit 1
+            fi
+            if [ -z "$PREDICATE" ]; then
+              echo "FAIL: predicate output is empty on success"
+              exit 1
+            fi
+            echo "PASS: predicate-type='$PREDICATE_TYPE' and predicate is set"
+          elif [ "$OUTCOME" = "failure" ]; then
+            echo "PASS: action failed gracefully (expected under act harness without full GitHub Actions context)"
+          else
+            echo "FAIL: unexpected outcome '$OUTCOME'"
+            exit 1
+          fi

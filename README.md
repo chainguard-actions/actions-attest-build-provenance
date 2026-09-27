@@ -1,25 +1,255 @@
-# actions/attest-build-provenance
+# `actions/attest-build-provenance`
 
-Generate provenance attestations for build artifacts
+[![Public-Good Sigstore Prober](https://github.com/actions/attest-build-provenance/actions/workflows/prober-public-good.yml/badge.svg)](https://github.com/actions/attest-build-provenance/actions/workflows/prober-public-good.yml)
+[![GitHub Sigstore Prober](https://github.com/actions/attest-build-provenance/actions/workflows/prober-github.yml/badge.svg)](https://github.com/actions/attest-build-provenance/actions/workflows/prober-github.yml)
 
-Hardened by [Chainguard](https://www.chainguard.dev) from the upstream action at [https://github.com/actions/attest-build-provenance](https://github.com/actions/attest-build-provenance).
+Generate signed build provenance attestations for workflow artifacts. Internally
+powered by the [@actions/attest][1] package.
 
-## Versions
+Attestations bind some subject (a named artifact along with its digest) to a
+[SLSA build provenance][3] predicate using the [in-toto][2] format.
 
-| Version | Tag | Upstream commit |
-|---------|-----|-----------------|
-| predicate@0.2.0 | [`predicate@0.2.0`](https://github.com/chainguard-actions/actions-attest-build-provenance/tree/predicate@0.2.0) | [`810042e`](https://github.com/actions/attest-build-provenance/commit/810042e79b70f848608c7f311a148cb76f4373b0) |
-| predicate@1.0.0 | [`predicate@1.0.0`](https://github.com/chainguard-actions/actions-attest-build-provenance/tree/predicate@1.0.0) | [`db1dde0`](https://github.com/actions/attest-build-provenance/commit/db1dde0f270afe12073070ac7aa802958ae3ec04) |
-| predicate@1.1.0 | [`predicate@1.1.0`](https://github.com/chainguard-actions/actions-attest-build-provenance/tree/predicate@1.1.0) | [`46e4ff8`](https://github.com/actions/attest-build-provenance/commit/46e4ff8b824dc6ae13c8f92c8ba69907e2d39b4e) |
-| predicate@1.1.1 | [`predicate@1.1.1`](https://github.com/chainguard-actions/actions-attest-build-provenance/tree/predicate@1.1.1) | [`9ff3713`](https://github.com/actions/attest-build-provenance/commit/9ff3713ef183e028b07415e8a740b634c054a663) |
-| predicate@1.1.2 | [`predicate@1.1.2`](https://github.com/chainguard-actions/actions-attest-build-provenance/tree/predicate@1.1.2) | [`d58ddf9`](https://github.com/actions/attest-build-provenance/commit/d58ddf9f241cd8163408934540d01c3335864d64) |
-| predicate@1.1.3 | [`predicate@1.1.3`](https://github.com/chainguard-actions/actions-attest-build-provenance/tree/predicate@1.1.3) | [`f1185f1`](https://github.com/actions/attest-build-provenance/commit/f1185f1959cdaeda41a7f5a7b43cbe6b58a7a793) |
-| predicate@1.1.5 | [`predicate@1.1.5`](https://github.com/chainguard-actions/actions-attest-build-provenance/tree/predicate@1.1.5) | [`1176ef5`](https://github.com/actions/attest-build-provenance/commit/1176ef556905f349f669722abf30bce1a6e16e01) |
-| v2.2.3 | [`v2.2.3`](https://github.com/chainguard-actions/actions-attest-build-provenance/tree/v2.2.3) | [`c074443`](https://github.com/actions/attest-build-provenance/commit/c074443f1aee8d4aeeae555aebba3282517141b2) |
-| v2.4.0 | [`v2.4.0`](https://github.com/chainguard-actions/actions-attest-build-provenance/tree/v2.4.0) | [`e8998f9`](https://github.com/actions/attest-build-provenance/commit/e8998f949152b193b063cb0ec769d69d929409be) |
-| v4.1.0 | [`v4.1.0`](https://github.com/chainguard-actions/actions-attest-build-provenance/tree/v4.1.0) | [`a2bbfa2`](https://github.com/actions/attest-build-provenance/commit/a2bbfa25375fe432b6a289bc6b6cd05ecd0c4c32) |
-| v4.1.1 | [`v4.1.1`](https://github.com/chainguard-actions/actions-attest-build-provenance/tree/v4.1.1) | [`0f67c3f`](https://github.com/actions/attest-build-provenance/commit/0f67c3f4856b2e3261c31976d6725780e5e4c373) |
-| v4.2.2 | [`v4.2.2`](https://github.com/chainguard-actions/actions-attest-build-provenance/tree/v4.2.2) | [`4d10147`](https://github.com/actions/attest-build-provenance/commit/4d101475d8b20a2381f78447822ac1eab6504dd8) |
+A verifiable signature is generated for the attestation using a short-lived
+[Sigstore][4]-issued signing certificate. If the repository initiating the
+GitHub Actions workflow is public, the public-good instance of Sigstore will be
+used to generate the attestation signature. If the repository is
+private/internal, it will use the GitHub private Sigstore instance.
+
+Once the attestation has been created and signed, it will be uploaded to the GH
+attestations API and associated with the repository from which the workflow was
+initiated.
+
+Attestations can be verified using the [`attestation` command in the GitHub
+CLI][5].
+
+See [Using artifact attestations to establish provenance for builds][9] for more
+information on artifact attestations.
+
+## Usage
+
+Within the GitHub Actions workflow which builds some artifact you would like to
+attest:
+
+1. Ensure that the following permissions are set:
+
+   ```yaml
+   permissions:
+     id-token: write
+     attestations: write
+   ```
+
+   The `id-token` permission gives the action the ability to mint the OIDC token
+   necessary to request a Sigstore signing certificate. The `attestations`
+   permission is necessary to persist the attestation.
+
+1. Add the following to your workflow after your artifact has been built:
+
+   ```yaml
+   - uses: actions/attest-build-provenance@v1
+     with:
+       subject-path: '<PATH TO ARTIFACT>'
+   ```
+
+   The `subject-path` parameter should identify the artifact for which you want
+   to generate an attestation.
+
+### Inputs
+
+See [action.yml](action.yml)
+
+```yaml
+- uses: actions/attest-build-provenance@v1
+  with:
+    # Path to the artifact serving as the subject of the attestation. Must
+    # specify exactly one of "subject-path" or "subject-digest". May contain a
+    # glob pattern or list of paths (total subject count cannot exceed 2500).
+    subject-path:
+
+    # SHA256 digest of the subject for the attestation. Must be in the form
+    # "sha256:hex_digest" (e.g. "sha256:abc123..."). Must specify exactly one
+    # of "subject-path" or "subject-digest".
+    subject-digest:
+
+    # Subject name as it should appear in the attestation. Required unless
+    # "subject-path" is specified, in which case it will be inferred from the
+    # path.
+    subject-name:
+
+    # Whether to push the attestation to the image registry. Requires that the
+    # "subject-name" parameter specify the fully-qualified image name and that
+    # the "subject-digest" parameter be specified. Defaults to false.
+    push-to-registry:
+
+    # Whether to attach a list of generated attestations to the workflow run
+    # summary page. Defaults to true.
+    show-summary:
+
+    # The GitHub token used to make authenticated API requests. Default is
+    # ${{ github.token }}
+    github-token:
+```
+
+### Outputs
+
+<!-- markdownlint-disable MD013 -->
+
+| Name          | Description                                                    | Example                  |
+| ------------- | -------------------------------------------------------------- | ------------------------ |
+| `bundle-path` | Absolute path to the file containing the generated attestation | `/tmp/attestation.jsonl` |
+
+<!-- markdownlint-enable MD013 -->
+
+Attestations are saved in the JSON-serialized [Sigstore bundle][6] format.
+
+If multiple subjects are being attested at the same time, each attestation will
+be written to the output file on a separate line (using the [JSON Lines][7]
+format).
+
+## Attestation Limits
+
+### Subject Limits
+
+No more than 2500 subjects can be attested at the same time. Subjects will be
+processed in batches 50. After the initial group of 50, each subsequent batch
+will incur an exponentially increasing amount of delay (capped at 1 minute of
+delay per batch) to avoid overwhelming the attestation API.
+
+## Examples
+
+### Identify Subject by Path
+
+For the basic use case, simply add the `attest-build-provenance` action to your
+workflow and supply the path to the artifact for which you want to generate
+attestation.
+
+```yaml
+name: build-attest
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    permissions:
+      id-token: write
+      contents: read
+      attestations: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Build artifact
+        run: make my-app
+      - name: Attest
+        uses: actions/attest-build-provenance@v1
+        with:
+          subject-path: '${{ github.workspace }}/my-app'
+```
+
+### Identify Multiple Subjects
+
+If you are generating multiple artifacts, you can generate a provenance
+attestation for each by using a wildcard in the `subject-path` input.
+
+```yaml
+- uses: actions/attest-build-provenance@v1
+  with:
+    subject-path: 'dist/**/my-bin-*'
+```
+
+For supported wildcards along with behavior and documentation, see
+[@actions/glob][8] which is used internally to search for files.
+
+Alternatively, you can explicitly list multiple subjects with either a comma or
+newline delimited list:
+
+```yaml
+- uses: actions/attest-build-provenance@v1
+  with:
+    subject-path: 'dist/foo, dist/bar'
+```
+
+```yaml
+- uses: actions/attest-build-provenance@v1
+  with:
+    subject-path: |
+      dist/foo
+      dist/bar
+```
+
+### Container Image
+
+When working with container images you can invoke the action with the
+`subject-name` and `subject-digest` inputs.
+
+If you want to publish the attestation to the container registry with the
+`push-to-registry` option, it is important that the `subject-name` specify the
+fully-qualified image name (e.g. "ghcr.io/user/app" or
+"acme.azurecr.io/user/app"). Do NOT include a tag as part of the image name --
+the specific image being attested is identified by the supplied digest.
+
+Attestation bundles are stored in the OCI registry according to the [Cosign
+Bundle Specification][10].
+
+> **NOTE**: When pushing to Docker Hub, please use "index.docker.io" as the
+> registry portion of the image name.
+
+```yaml
+name: build-attested-image
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      packages: write
+      contents: read
+      attestations: write
+    env:
+      REGISTRY: ghcr.io
+      IMAGE_NAME: ${{ github.repository }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build and push image
+        id: push
+        uses: docker/build-push-action@v5.0.0
+        with:
+          context: .
+          push: true
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+      - name: Attest
+        uses: actions/attest-build-provenance@v1
+        id: attest
+        with:
+          subject-name: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          subject-digest: ${{ steps.push.outputs.digest }}
+          push-to-registry: true
+```
+
+[1]: https://github.com/actions/toolkit/tree/main/packages/attest
+[2]: https://github.com/in-toto/attestation/tree/main/spec/v1
+[3]: https://slsa.dev/spec/v1.0/provenance
+[4]: https://www.sigstore.dev/
+[5]: https://cli.github.com/manual/gh_attestation_verify
+[6]:
+  https://github.com/sigstore/protobuf-specs/blob/main/protos/sigstore_bundle.proto
+[7]: https://jsonlines.org/
+[8]: https://github.com/actions/toolkit/tree/main/packages/glob#patterns
+[9]:
+  https://docs.github.com/en/actions/security-guides/using-artifact-attestations-to-establish-provenance-for-builds
+[10]: https://github.com/sigstore/cosign/blob/main/specs/BUNDLE_SPEC.md
 
 ## Privacy
 
