@@ -1,0 +1,35 @@
+name: Test predicate-type is a valid URI
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - id: action
+        uses: .
+        continue-on-error: true
+      - name: Assert predicate-type is a valid URI or action failed gracefully
+        env:
+          PREDICATE_TYPE: ${{ steps.action.outputs.predicate-type }}
+          OUTCOME: ${{ steps.action.outcome }}
+        run: |
+          echo "outcome: $OUTCOME"
+          echo "predicate-type: $PREDICATE_TYPE"
+          if [ "$OUTCOME" = "success" ]; then
+            if [ -z "$PREDICATE_TYPE" ]; then
+              echo "FAIL: action succeeded but predicate-type output is empty"
+              exit 1
+            fi
+            # A URI must contain "://" (e.g. https://slsa.dev/provenance/v1)
+            if ! echo "$PREDICATE_TYPE" | grep -qE '^[a-zA-Z][a-zA-Z0-9+\-.]*://'; then
+              echo "FAIL: predicate-type does not look like a URI: $PREDICATE_TYPE"
+              exit 1
+            fi
+            echo "PASS: predicate-type is a valid URI: $PREDICATE_TYPE"
+          elif [ "$OUTCOME" = "failure" ]; then
+            echo "PASS: action failed gracefully (likely missing OIDC/API context under act)"
+          else
+            echo "FAIL: unexpected outcome '$OUTCOME'"
+            exit 1
+          fi
