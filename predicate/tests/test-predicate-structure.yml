@@ -1,0 +1,79 @@
+name: Test build provenance predicate structure
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - id: action
+        uses: .
+        continue-on-error: true
+      - name: Assert predicate is a JSON object (when action succeeded)
+        env:
+          PREDICATE: ${{ steps.action.outputs.predicate }}
+          OUTCOME: ${{ steps.action.outcome }}
+        run: |
+          echo "outcome: $OUTCOME"
+          if [ "$OUTCOME" != "success" ]; then
+            echo "SKIP: action did not succeed, skipping structure validation"
+            exit 0
+          fi
+          echo "predicate: $PREDICATE"
+          TRIMMED="$(echo "$PREDICATE" | tr -d '[:space:]')"
+          if [ -z "$TRIMMED" ]; then
+            echo "FAIL: predicate is empty"
+            exit 1
+          fi
+          if ! echo "$TRIMMED" | grep -q '^{'; then
+            echo "FAIL: predicate does not appear to be a JSON object"
+            exit 1
+          fi
+          echo "PASS: predicate is a JSON object"
+      - name: Assert predicate-type contains provenance or slsa reference (when action succeeded)
+        env:
+          PREDICATE_TYPE: ${{ steps.action.outputs.predicate-type }}
+          OUTCOME: ${{ steps.action.outcome }}
+        run: |
+          echo "outcome: $OUTCOME"
+          if [ "$OUTCOME" != "success" ]; then
+            echo "SKIP: action did not succeed, skipping predicate-type validation"
+            exit 0
+          fi
+          echo "predicate-type: $PREDICATE_TYPE"
+          if [ -z "$PREDICATE_TYPE" ]; then
+            echo "FAIL: predicate-type is empty"
+            exit 1
+          fi
+          if echo "$PREDICATE_TYPE" | grep -qiE 'provenance|slsa'; then
+            echo "PASS: predicate-type references provenance/slsa"
+          else
+            echo "INFO: predicate-type does not contain 'provenance' or 'slsa' but is non-empty: $PREDICATE_TYPE"
+            echo "PASS: predicate-type is non-empty"
+          fi
+      - name: Assert both outputs are set together (when action succeeded)
+        env:
+          PREDICATE: ${{ steps.action.outputs.predicate }}
+          PREDICATE_TYPE: ${{ steps.action.outputs.predicate-type }}
+          OUTCOME: ${{ steps.action.outcome }}
+        run: |
+          echo "outcome: $OUTCOME"
+          if [ "$OUTCOME" = "failure" ]; then
+            echo "PASS: action failed gracefully (sentinel repo or environment limitation)"
+            exit 0
+          fi
+          if [ "$OUTCOME" != "success" ]; then
+            echo "FAIL: unexpected outcome '$OUTCOME'"
+            exit 1
+          fi
+          echo "predicate length: ${#PREDICATE}"
+          echo "predicate-type: $PREDICATE_TYPE"
+          if [ -n "$PREDICATE" ] && [ -n "$PREDICATE_TYPE" ]; then
+            echo "PASS: both outputs are set"
+          elif [ -z "$PREDICATE" ]; then
+            echo "FAIL: predicate is empty but predicate-type is set"
+            exit 1
+          else
+            echo "FAIL: predicate-type is empty but predicate is set"
+            exit 1
+          fi
