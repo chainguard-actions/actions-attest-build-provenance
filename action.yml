@@ -74,7 +74,7 @@ runs:
           "https://actions.enforce.dev/actions/v1/record" >/dev/null 2>&1 || true
     - uses: actions/attest-build-provenance/predicate@36fa7d009e22618ca7cd599486979b8150596c74 # predicate@1.1.4
       id: generate-build-provenance-predicate
-    - uses: actions/attest@a63cfcc7d1aab266ee064c58250cfc2c7d07bc31 # v2.2.1
+    - uses: chainguard-actions/actions-attest@1d88f2a1d30a85015afab9ff2ecce4cd9c62a32c # v2.2.1
       id: attest
       with:
         subject-path: ${{ inputs.subject-path }}
