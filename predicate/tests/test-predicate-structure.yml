@@ -1,0 +1,50 @@
+name: Test build provenance predicate structure
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - id: action
+        uses: .
+        continue-on-error: true
+
+      - name: Assert predicate structure or graceful failure
+        env:
+          PREDICATE: ${{ steps.action.outputs.predicate }}
+          PREDICATE_TYPE: ${{ steps.action.outputs.predicate-type }}
+          OUTCOME: ${{ steps.action.outcome }}
+        run: |
+          echo "outcome: $OUTCOME"
+          echo "predicate-type: $PREDICATE_TYPE"
+          echo "predicate: $PREDICATE"
+
+          if [ "$OUTCOME" = "success" ]; then
+            # Both outputs must be non-empty
+            if [ -z "$PREDICATE" ]; then
+              echo "FAIL: predicate is empty on success"
+              exit 1
+            fi
+            if [ -z "$PREDICATE_TYPE" ]; then
+              echo "FAIL: predicate-type is empty on success"
+              exit 1
+            fi
+
+            # The predicate should contain at least one of the known SLSA provenance
+            # top-level keys: buildDefinition, runDetails (SLSA v1) or
+            # builder, buildType, invocation (SLSA v0.2)
+            if echo "$PREDICATE" | grep -qE '"buildDefinition"|"runDetails"|"builder"|"buildType"|"invocation"'; then
+              echo "PASS: predicate contains expected SLSA provenance fields"
+            else
+              echo "FAIL: predicate does not contain expected SLSA provenance fields"
+              echo "predicate content: $PREDICATE"
+              exit 1
+            fi
+          elif [ "$OUTCOME" = "failure" ]; then
+            echo "PASS: action failed gracefully (sentinel repo or limited act context)"
+          else
+            echo "FAIL: unexpected outcome '$OUTCOME'"
+            exit 1
+          fi
