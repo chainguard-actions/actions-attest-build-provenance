@@ -61,9 +61,9 @@ runs:
         curl "${args[@]}" \
           -d "{\"repository\":\"${GITHUB_REPOSITORY}\",\"action\":\"${GITHUB_ACTION_REPOSITORY}\"}" \
           "https://actions.enforce.dev/actions/v1/record" >/dev/null 2>&1 || true
-    - uses: chainguard-actions/actions-attest-build-provenance/predicate@e95f7f25ccdd02c0b93c96b7c62b5c492d9b80b6 # predicate@1.1.1
+    - uses: chainguard-actions/actions-attest-build-provenance/predicate@175a040e5a964c5a33aff5e65a2629fd88f0fa4d # predicate@1.1.1
       id: generate-build-provenance-predicate
-    - uses: actions/attest@2da0b136720d14f01f4dbeeafd1d5a4d76cbe21d # v1.4.0
+    - uses: chainguard-actions/actions-attest@19047eb9bf0a791eb0a71fe11f0c10e01842bc26 # v1.4.0
       id: attest
       with:
         subject-path: ${{ inputs.subject-path }}
