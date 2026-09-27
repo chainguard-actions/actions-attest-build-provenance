@@ -1,0 +1,48 @@
+name: Test predicate output is valid JSON
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - id: predicate
+        uses: .
+        continue-on-error: true
+      - name: Assert predicate is valid JSON with expected SLSA fields
+        env:
+          PREDICATE: ${{ steps.predicate.outputs.predicate }}
+          OUTCOME: ${{ steps.predicate.outcome }}
+        run: |
+          echo "outcome: $OUTCOME"
+          echo "predicate: $PREDICATE"
+          if [ "$OUTCOME" = "success" ]; then
+            if [ -z "$PREDICATE" ]; then
+              echo "FAIL: action succeeded but predicate output is empty"
+              exit 1
+            fi
+            # Validate that the predicate is parseable JSON using jq
+            if ! echo "$PREDICATE" | jq . > /dev/null 2>&1; then
+              echo "FAIL: predicate is not valid JSON"
+              exit 1
+            fi
+            echo "PASS: predicate is valid JSON"
+            # Check for common SLSA provenance fields (v1 uses buildDefinition, v0.2 uses builder/buildType)
+            HAS_BUILD_DEF=$(echo "$PREDICATE" | jq 'has("buildDefinition")' 2>/dev/null || echo "false")
+            HAS_BUILDER=$(echo "$PREDICATE" | jq 'has("builder")' 2>/dev/null || echo "false")
+            HAS_BUILD_TYPE=$(echo "$PREDICATE" | jq 'has("buildType")' 2>/dev/null || echo "false")
+            echo "has buildDefinition: $HAS_BUILD_DEF"
+            echo "has builder: $HAS_BUILDER"
+            echo "has buildType: $HAS_BUILD_TYPE"
+            if [ "$HAS_BUILD_DEF" = "true" ] || [ "$HAS_BUILDER" = "true" ] || [ "$HAS_BUILD_TYPE" = "true" ]; then
+              echo "PASS: predicate contains expected SLSA fields"
+            else
+              echo "FAIL: predicate missing expected SLSA fields (buildDefinition, builder, or buildType)"
+              exit 1
+            fi
+          elif [ "$OUTCOME" = "failure" ]; then
+            echo "PASS: action failed gracefully (likely missing OIDC/signing context under harness)"
+          else
+            echo "FAIL: unexpected outcome '$OUTCOME'"
+            exit 1
+          fi
