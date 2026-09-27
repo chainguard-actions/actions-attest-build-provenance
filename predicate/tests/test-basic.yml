@@ -1,0 +1,61 @@
+name: Test basic build provenance predicate generation
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - id: action
+        uses: .
+
+      - name: Assert predicate-type is non-empty
+        env:
+          PREDICATE_TYPE: ${{ steps.action.outputs.predicate-type }}
+        run: |
+          echo "predicate-type: $PREDICATE_TYPE"
+          if [ -z "$PREDICATE_TYPE" ]; then
+            echo "FAIL: predicate-type output is empty"
+            exit 1
+          fi
+          echo "PASS: predicate-type is '$PREDICATE_TYPE'"
+
+      - name: Assert predicate is non-empty valid JSON
+        env:
+          PREDICATE: ${{ steps.action.outputs.predicate }}
+        run: |
+          echo "predicate: $PREDICATE"
+          if [ -z "$PREDICATE" ]; then
+            echo "FAIL: predicate output is empty"
+            exit 1
+          fi
+          if ! echo "$PREDICATE" | jq . > /dev/null 2>&1; then
+            echo "FAIL: predicate is not valid JSON"
+            exit 1
+          fi
+          echo "PASS: predicate is valid JSON"
+
+      - name: Assert predicate-type is a URI
+        env:
+          PREDICATE_TYPE: ${{ steps.action.outputs.predicate-type }}
+        run: |
+          echo "predicate-type: $PREDICATE_TYPE"
+          if ! echo "$PREDICATE_TYPE" | grep -qE '^https?://'; then
+            echo "FAIL: predicate-type does not look like a URI: $PREDICATE_TYPE"
+            exit 1
+          fi
+          echo "PASS: predicate-type is a valid URI"
+
+      - name: Assert predicate JSON has content
+        env:
+          PREDICATE: ${{ steps.action.outputs.predicate }}
+        run: |
+          echo "predicate: $PREDICATE"
+          KEY_COUNT=$(echo "$PREDICATE" | jq 'keys | length')
+          echo "top-level key count: $KEY_COUNT"
+          if [ "$KEY_COUNT" -eq 0 ]; then
+            echo "FAIL: predicate JSON is an empty object"
+            exit 1
+          fi
+          echo "PASS: predicate has $KEY_COUNT top-level key(s)"

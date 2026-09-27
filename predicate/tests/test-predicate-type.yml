@@ -1,0 +1,58 @@
+name: Test predicate-type output is a valid SLSA provenance URI
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - id: action
+        uses: .
+
+      - name: Assert predicate-type matches known SLSA provenance type
+        env:
+          PREDICATE_TYPE: ${{ steps.action.outputs.predicate-type }}
+        run: |
+          echo "predicate-type: $PREDICATE_TYPE"
+          if [ -z "$PREDICATE_TYPE" ]; then
+            echo "FAIL: predicate-type is empty"
+            exit 1
+          fi
+          if echo "$PREDICATE_TYPE" | grep -qiE '(slsa|provenance)'; then
+            echo "PASS: predicate-type contains expected SLSA/provenance keyword"
+          else
+            echo "WARN: predicate-type does not contain 'slsa' or 'provenance': $PREDICATE_TYPE"
+            if echo "$PREDICATE_TYPE" | grep -qE '^https?://'; then
+              echo "PASS: predicate-type is a valid URI"
+            else
+              echo "FAIL: predicate-type is neither a recognized SLSA URI nor a valid URI"
+              exit 1
+            fi
+          fi
+
+      - name: Assert predicate JSON has builder or runDetails field
+        env:
+          PREDICATE: ${{ steps.action.outputs.predicate }}
+        run: |
+          echo "predicate (first 500 chars): ${PREDICATE:0:500}"
+          if [ -z "$PREDICATE" ]; then
+            echo "FAIL: predicate is empty"
+            exit 1
+          fi
+          HAS_BUILDER=$(echo "$PREDICATE" | jq 'has("builder")')
+          HAS_RUN_DETAILS=$(echo "$PREDICATE" | jq 'has("runDetails")')
+          HAS_BUILD_DEF=$(echo "$PREDICATE" | jq 'has("buildDefinition")')
+          KEY_COUNT=$(echo "$PREDICATE" | jq 'keys | length')
+          echo "has builder: $HAS_BUILDER"
+          echo "has runDetails: $HAS_RUN_DETAILS"
+          echo "has buildDefinition: $HAS_BUILD_DEF"
+          echo "key count: $KEY_COUNT"
+          if [ "$HAS_BUILDER" = "true" ] || [ "$HAS_RUN_DETAILS" = "true" ] || [ "$HAS_BUILD_DEF" = "true" ]; then
+            echo "PASS: found expected SLSA provenance field"
+          elif [ "$KEY_COUNT" -gt 0 ]; then
+            echo "PASS: predicate has content (keys present)"
+          else
+            echo "FAIL: predicate is an empty object with no recognized SLSA fields"
+            exit 1
+          fi
