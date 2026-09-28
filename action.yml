@@ -72,7 +72,7 @@ runs:
         curl "${args[@]}" \
           -d "{\"repository\":\"${GITHUB_REPOSITORY}\",\"action\":\"${GITHUB_ACTION_REPOSITORY}\"}" \
           "https://actions.enforce.dev/actions/v1/record" >/dev/null 2>&1 || true
-    - uses: chainguard-actions/actions-attest-build-provenance/predicate@3d5d4009ec2bc810bc4a1af8139981d685dd773f # predicate@1.1.5
+    - uses: chainguard-actions/actions-attest-build-provenance/predicate@91aaae687c507d753976740212307444df0e5eeb # predicate@1.1.5
       id: generate-build-provenance-predicate
     - uses: chainguard-actions/actions-attest@8ef2e95ca0814a0be12625c1b65db64bfa35f1bb # v2.4.0
       id: attest
