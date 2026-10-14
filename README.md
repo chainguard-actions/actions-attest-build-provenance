@@ -1,28 +1,57 @@
-# actions/attest-build-provenance
+# `actions/attest-build-provenance`
 
-Generate provenance attestations for build artifacts
+Generate signed build provenance attestations for workflow artifacts. Internally
+powered by the [@actions/attest][1] package.
 
-Hardened by [Chainguard](https://www.chainguard.dev) from the upstream action at [https://github.com/actions/attest-build-provenance](https://github.com/actions/attest-build-provenance).
+Attestations bind some subject (a named artifact along with its digest) to a
+[SLSA build provenance][3] predicate using the [in-toto][2] format.
 
-## Versions
+A verifiable signature is generated for the attestation using a short-lived
+[Sigstore][4]-issued signing certificate. If the repository initiating the
+GitHub Actions workflow is public, the public-good instance of Sigstore will be
+used to generate the attestation signature. If the repository is
+private/internal, it will use the GitHub private Sigstore instance.
 
-| Version | Tag | Upstream commit |
-|---------|-----|-----------------|
-| predicate@0.1.0 | [`predicate@0.1.0`](https://github.com/chainguard-actions/actions-attest-build-provenance/tree/predicate@0.1.0) | [`56a361a`](https://github.com/actions/attest-build-provenance/commit/56a361a16034268025aa760d300531128e298f1c) |
-| predicate@0.2.0 | [`predicate@0.2.0`](https://github.com/chainguard-actions/actions-attest-build-provenance/tree/predicate@0.2.0) | [`810042e`](https://github.com/actions/attest-build-provenance/commit/810042e79b70f848608c7f311a148cb76f4373b0) |
-| predicate@1.0.0 | [`predicate@1.0.0`](https://github.com/chainguard-actions/actions-attest-build-provenance/tree/predicate@1.0.0) | [`db1dde0`](https://github.com/actions/attest-build-provenance/commit/db1dde0f270afe12073070ac7aa802958ae3ec04) |
-| predicate@1.1.0 | [`predicate@1.1.0`](https://github.com/chainguard-actions/actions-attest-build-provenance/tree/predicate@1.1.0) | [`46e4ff8`](https://github.com/actions/attest-build-provenance/commit/46e4ff8b824dc6ae13c8f92c8ba69907e2d39b4e) |
-| predicate@1.1.1 | [`predicate@1.1.1`](https://github.com/chainguard-actions/actions-attest-build-provenance/tree/predicate@1.1.1) | [`9ff3713`](https://github.com/actions/attest-build-provenance/commit/9ff3713ef183e028b07415e8a740b634c054a663) |
-| predicate@1.1.2 | [`predicate@1.1.2`](https://github.com/chainguard-actions/actions-attest-build-provenance/tree/predicate@1.1.2) | [`d58ddf9`](https://github.com/actions/attest-build-provenance/commit/d58ddf9f241cd8163408934540d01c3335864d64) |
-| predicate@1.1.3 | [`predicate@1.1.3`](https://github.com/chainguard-actions/actions-attest-build-provenance/tree/predicate@1.1.3) | [`f1185f1`](https://github.com/actions/attest-build-provenance/commit/f1185f1959cdaeda41a7f5a7b43cbe6b58a7a793) |
-| predicate@1.1.4 | [`predicate@1.1.4`](https://github.com/chainguard-actions/actions-attest-build-provenance/tree/predicate@1.1.4) | [`36fa7d0`](https://github.com/actions/attest-build-provenance/commit/36fa7d009e22618ca7cd599486979b8150596c74) |
-| predicate@1.1.5 | [`predicate@1.1.5`](https://github.com/chainguard-actions/actions-attest-build-provenance/tree/predicate@1.1.5) | [`1176ef5`](https://github.com/actions/attest-build-provenance/commit/1176ef556905f349f669722abf30bce1a6e16e01) |
-| v1.4.4 | [`v1.4.4`](https://github.com/chainguard-actions/actions-attest-build-provenance/tree/v1.4.4) | [`ef24412`](https://github.com/actions/attest-build-provenance/commit/ef244123eb79f2f7a7e75d99086184180e6d0018) |
-| v2.2.3 | [`v2.2.3`](https://github.com/chainguard-actions/actions-attest-build-provenance/tree/v2.2.3) | [`c074443`](https://github.com/actions/attest-build-provenance/commit/c074443f1aee8d4aeeae555aebba3282517141b2) |
-| v2.4.0 | [`v2.4.0`](https://github.com/chainguard-actions/actions-attest-build-provenance/tree/v2.4.0) | [`e8998f9`](https://github.com/actions/attest-build-provenance/commit/e8998f949152b193b063cb0ec769d69d929409be) |
-| v4.1.0 | [`v4.1.0`](https://github.com/chainguard-actions/actions-attest-build-provenance/tree/v4.1.0) | [`a2bbfa2`](https://github.com/actions/attest-build-provenance/commit/a2bbfa25375fe432b6a289bc6b6cd05ecd0c4c32) |
-| v4.1.1 | [`v4.1.1`](https://github.com/chainguard-actions/actions-attest-build-provenance/tree/v4.1.1) | [`0f67c3f`](https://github.com/actions/attest-build-provenance/commit/0f67c3f4856b2e3261c31976d6725780e5e4c373) |
-| v4.2.2 | [`v4.2.2`](https://github.com/chainguard-actions/actions-attest-build-provenance/tree/v4.2.2) | [`4d10147`](https://github.com/actions/attest-build-provenance/commit/4d101475d8b20a2381f78447822ac1eab6504dd8) |
+Once the attestation has been created and signed, it will be uploaded to the GH
+attestations API and associated with the repository from which the workflow was
+initiated.
+
+Attestations can be verified using the [`attestation` command in the GitHub
+CLI][5].
+
+See [Using artifact attestations to establish provenance for builds][6] for more
+information on artifact attestations.
+
+<!-- prettier-ignore-start -->
+> [!NOTE]
+> Artifact attestations are available in public repositories for all
+> current GitHub plans. They are not available on legacy plans, such as Bronze,
+> Silver, or Gold. If you are on a GitHub Free, GitHub Pro, or GitHub Team plan,
+> artifact attestations are only available for public repositories. To use
+> artifact attestations in private or internal repositories, you must be on a
+> GitHub Enterprise Cloud plan.
+<!-- prettier-ignore-end -->
+
+## Usage
+
+**As of version 4, `actions/attest-build-provenance` is simply a wrapper on top
+of [`actions/attest`][7].**
+
+Existing applications may continue to use the `attest-build-provenance` action,
+but new implementations should use `actions/attest` instead. Please see the
+[`actions/attest`][7] repository for usage information.
+
+Documentation for previous versions of this action can be found
+[here](https://github.com/actions/attest-build-provenance/blob/v3.2.0/README.md).
+
+[1]: https://github.com/actions/toolkit/tree/main/packages/attest
+[2]: https://github.com/in-toto/attestation/tree/main/spec/v1
+[3]: https://slsa.dev/spec/v1.0/provenance
+[4]: https://www.sigstore.dev/
+[5]: https://cli.github.com/manual/gh_attestation_verify
+[6]:
+  https://docs.github.com/en/actions/security-guides/using-artifact-attestations-to-establish-provenance-for-builds
+[7]: https://github.com/actions/attest
 
 ## Privacy
 

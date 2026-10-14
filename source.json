@@ -1,6 +1,12 @@
 {
   "owner": "actions",
   "repo": "attest-build-provenance",
-  "version": "",
-  "url": "https://github.com/actions/attest-build-provenance"
+  "version": "main",
+  "commit_sha": "9d57eef8c06cd9d6b433effeeb7a6a77b3ff94ad",
+  "url": "https://github.com/actions/attest-build-provenance",
+  "policy_sha": "d636be7e43ef829af6e853da6b3c7566db9f72fe",
+  "test_policy_sha": "843adf9e4b8f85d0c08b27b9d0b09dd094b54702",
+  "test_agent_version": "2",
+  "harden_agent_version": "2",
+  "dependency_fingerprint": "sha256:50a7527c0d188257eab6ddb2502bd56c797150af933a805c37cbc8a2d13338af"
 }
